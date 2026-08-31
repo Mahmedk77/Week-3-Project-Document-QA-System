@@ -1,0 +1,178 @@
+{
+  "testRuns": [
+    {
+      "question": "What is the refund window for a defective product?",
+      "response": {
+        "answer": "The refund window for a defective product is not limited to 30 days; customers are entitled to a full refund regardless of the 30-day window, provided that the defective items are reported within 14 days of delivery for expedited processing.",
+        "citations": [
+          {
+            "filename": "test-knowledge-base.pdf",
+            "page": 1,
+            "quote": "If a product arrives defective, damaged, or dead on arrival (DOA), customers are entitled to a full refund regardless of the 30-day window. In these cases, we also cover the cost of return shipping. Defective items should be reported within 14 days of delivery for expedited processing."
+          }
+        ],
+        "retrievedChunks": [
+          {
+            "id": 5,
+            "content": "Section 1: Refund and Returns Policy\nOur company offers a standard refund window of 30 days from the date of purchase.\nCustomers must provide a valid receipt or order confirmation number to be eligible.\nRefunds are processed within 5 to 7 business days and are credited back to the\noriginal payment method used at checkout.\nIf a product arrives defective, damaged, or dead on arrival (DOA), customers are\nentitled to a full refund regardless of the 30-day window. In these cases, we also\ncover the cost of return shipping. Defective items should be reported within 14\ndays of delivery for expedited processing.\nDigital products, gift cards, and clearance items marked \"final sale\" are not\neligible for refunds under any circumstances.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 1, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0392156862745098
+          },
+          {
+            "id": 6,
+            "content": "Digital products, gift cards, and clearance items marked \"final sale\" are not\neligible for refunds under any circumstances.\nThe refund policy reference code for internal tracking is RFD-2024-STD.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 1, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0192307692307692
+          },
+          {
+            "id": 7,
+            "content": "Section 2: Customer Support Hours\nOur headquarters is located in Rawalpindi, Pakistan. The customer support team\noperates Monday through Friday, from 9:00 AM to 6:00 PM Pakistan Standard Time.\nWe are closed on all major public holidays, including Eid-ul-Fitr, Eid-ul-Adha,\nand Pakistan Independence Day (August 14th).\nFor urgent issues outside business hours, customers can submit a ticket through\nthe online portal, and a team member will respond within 24 hours on the next\nbusiness day.\nThe support team can be reached at support@examplecompany.com or by phone at\nthe number listed on our contact page. Average first-response time during\nbusiness hours is under 2 hours.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 2, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0188679245283019
+          },
+          {
+            "id": 8,
+            "content": "Section 3: Engineering Deployment Process\nThe engineering team uses a monorepo structure with separate packages for the\nfrontend application, backend API services, and shared utility libraries.\nAll code changes go through a mandatory pull request review process before\nmerging into the main branch. At least one approval is required from a senior\nengineer before a PR can be merged.\nEvery deployment passes through a staging environment first, where automated\nintegration tests run against a production-like dataset. Only after staging\ntests pass does a change get promoted to production via the CI/CD pipeline.\nRollbacks can be triggered manually within 10 minutes if a production issue\nis detected, using the deployment dashboard's one-click revert feature.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 3, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0185185185185185
+          },
+          {
+            "id": 9,
+            "content": "Section 4: Subscription Pricing Tiers\nWe offer three subscription tiers: Basic, Pro, and Enterprise.\nThe Basic tier is priced at $9.99 per month and includes access to core features\nwith a limit of 5 projects and 2 team members.\nThe Pro tier is priced at $29.99 per month and includes unlimited projects, up\nto 10 team members, and priority email support.\nThe Enterprise tier is custom-priced based on organization size and includes\ndedicated account management, a 99.9% uptime SLA, and single sign-on (SSO)\nintegration. Enterprise customers must contact sales directly for a quote.\nAnnual billing is available on all tiers at a 15% discount compared to monthly\nbilling.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 4, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0181818181818182
+          }
+        ]
+      }
+    },
+    {
+      "question": "How much does the Pro tier cost per month?",
+      "response": {
+        "answer": "The Pro tier is priced at $29.99 per month.",
+        "citations": [
+          {
+            "filename": "test-knowledge-base.pdf",
+            "page": 4,
+            "quote": "The Pro tier is priced at $29.99 per month and includes unlimited projects, up to 10 team members, and priority email support."
+          }
+        ],
+        "retrievedChunks": [
+          {
+            "id": 9,
+            "content": "Section 4: Subscription Pricing Tiers\nWe offer three subscription tiers: Basic, Pro, and Enterprise.\nThe Basic tier is priced at $9.99 per month and includes access to core features\nwith a limit of 5 projects and 2 team members.\nThe Pro tier is priced at $29.99 per month and includes unlimited projects, up\nto 10 team members, and priority email support.\nThe Enterprise tier is custom-priced based on organization size and includes\ndedicated account management, a 99.9% uptime SLA, and single sign-on (SSO)\nintegration. Enterprise customers must contact sales directly for a quote.\nAnnual billing is available on all tiers at a 15% discount compared to monthly\nbilling.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 4, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0196078431372549
+          },
+          {
+            "id": 8,
+            "content": "Section 3: Engineering Deployment Process\nThe engineering team uses a monorepo structure with separate packages for the\nfrontend application, backend API services, and shared utility libraries.\nAll code changes go through a mandatory pull request review process before\nmerging into the main branch. At least one approval is required from a senior\nengineer before a PR can be merged.\nEvery deployment passes through a staging environment first, where automated\nintegration tests run against a production-like dataset. Only after staging\ntests pass does a change get promoted to production via the CI/CD pipeline.\nRollbacks can be triggered manually within 10 minutes if a production issue\nis detected, using the deployment dashboard's one-click revert feature.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 3, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0192307692307692
+          },
+          {
+            "id": 7,
+            "content": "Section 2: Customer Support Hours\nOur headquarters is located in Rawalpindi, Pakistan. The customer support team\noperates Monday through Friday, from 9:00 AM to 6:00 PM Pakistan Standard Time.\nWe are closed on all major public holidays, including Eid-ul-Fitr, Eid-ul-Adha,\nand Pakistan Independence Day (August 14th).\nFor urgent issues outside business hours, customers can submit a ticket through\nthe online portal, and a team member will respond within 24 hours on the next\nbusiness day.\nThe support team can be reached at support@examplecompany.com or by phone at\nthe number listed on our contact page. Average first-response time during\nbusiness hours is under 2 hours.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 2, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0188679245283019
+          },
+          {
+            "id": 5,
+            "content": "Section 1: Refund and Returns Policy\nOur company offers a standard refund window of 30 days from the date of purchase.\nCustomers must provide a valid receipt or order confirmation number to be eligible.\nRefunds are processed within 5 to 7 business days and are credited back to the\noriginal payment method used at checkout.\nIf a product arrives defective, damaged, or dead on arrival (DOA), customers are\nentitled to a full refund regardless of the 30-day window. In these cases, we also\ncover the cost of return shipping. Defective items should be reported within 14\ndays of delivery for expedited processing.\nDigital products, gift cards, and clearance items marked \"final sale\" are not\neligible for refunds under any circumstances.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 1, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0185185185185185
+          },
+          {
+            "id": 6,
+            "content": "Digital products, gift cards, and clearance items marked \"final sale\" are not\neligible for refunds under any circumstances.\nThe refund policy reference code for internal tracking is RFD-2024-STD.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 1, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0181818181818182
+          }
+        ]
+      }
+    },
+    {
+      "question": "What programming language does the engineering team use?",
+      "response": {
+        "answer": "The answer is not contained in the context.",
+        "citations": [],
+        "retrievedChunks": [
+          {
+            "id": 8,
+            "content": "Section 3: Engineering Deployment Process\nThe engineering team uses a monorepo structure with separate packages for the\nfrontend application, backend API services, and shared utility libraries.\nAll code changes go through a mandatory pull request review process before\nmerging into the main branch. At least one approval is required from a senior\nengineer before a PR can be merged.\nEvery deployment passes through a staging environment first, where automated\nintegration tests run against a production-like dataset. Only after staging\ntests pass does a change get promoted to production via the CI/CD pipeline.\nRollbacks can be triggered manually within 10 minutes if a production issue\nis detected, using the deployment dashboard's one-click revert feature.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 3, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0196078431372549
+          },
+          {
+            "id": 9,
+            "content": "Section 4: Subscription Pricing Tiers\nWe offer three subscription tiers: Basic, Pro, and Enterprise.\nThe Basic tier is priced at $9.99 per month and includes access to core features\nwith a limit of 5 projects and 2 team members.\nThe Pro tier is priced at $29.99 per month and includes unlimited projects, up\nto 10 team members, and priority email support.\nThe Enterprise tier is custom-priced based on organization size and includes\ndedicated account management, a 99.9% uptime SLA, and single sign-on (SSO)\nintegration. Enterprise customers must contact sales directly for a quote.\nAnnual billing is available on all tiers at a 15% discount compared to monthly\nbilling.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 4, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0192307692307692
+          },
+          {
+            "id": 7,
+            "content": "Section 2: Customer Support Hours\nOur headquarters is located in Rawalpindi, Pakistan. The customer support team\noperates Monday through Friday, from 9:00 AM to 6:00 PM Pakistan Standard Time.\nWe are closed on all major public holidays, including Eid-ul-Fitr, Eid-ul-Adha,\nand Pakistan Independence Day (August 14th).\nFor urgent issues outside business hours, customers can submit a ticket through\nthe online portal, and a team member will respond within 24 hours on the next\nbusiness day.\nThe support team can be reached at support@examplecompany.com or by phone at\nthe number listed on our contact page. Average first-response time during\nbusiness hours is under 2 hours.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 2, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0188679245283019
+          },
+          {
+            "id": 6,
+            "content": "Digital products, gift cards, and clearance items marked \"final sale\" are not\neligible for refunds under any circumstances.\nThe refund policy reference code for internal tracking is RFD-2024-STD.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 1, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0185185185185185
+          },
+          {
+            "id": 5,
+            "content": "Section 1: Refund and Returns Policy\nOur company offers a standard refund window of 30 days from the date of purchase.\nCustomers must provide a valid receipt or order confirmation number to be eligible.\nRefunds are processed within 5 to 7 business days and are credited back to the\noriginal payment method used at checkout.\nIf a product arrives defective, damaged, or dead on arrival (DOA), customers are\nentitled to a full refund regardless of the 30-day window. In these cases, we also\ncover the cost of return shipping. Defective items should be reported within 14\ndays of delivery for expedited processing.\nDigital products, gift cards, and clearance items marked \"final sale\" are not\neligible for refunds under any circumstances.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 1, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0181818181818182
+          }
+        ]
+      }
+    },
+    {
+      "question": "RFD-2024-STD",
+      "response": {
+        "answer": "The reference code RFD-2024-STD is related to the refund policy for internal tracking purposes.",
+        "citations": [
+          {
+            "filename": "test-knowledge-base.pdf",
+            "page": 1,
+            "quote": "The refund policy reference code for internal tracking is RFD-2024-STD."
+          }
+        ],
+        "retrievedChunks": [
+          {
+            "id": 6,
+            "content": "Digital products, gift cards, and clearance items marked \"final sale\" are not\neligible for refunds under any circumstances.\nThe refund policy reference code for internal tracking is RFD-2024-STD.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 1, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0392156862745098
+          },
+          {
+            "id": 5,
+            "content": "Section 1: Refund and Returns Policy\nOur company offers a standard refund window of 30 days from the date of purchase.\nCustomers must provide a valid receipt or order confirmation number to be eligible.\nRefunds are processed within 5 to 7 business days and are credited back to the\noriginal payment method used at checkout.\nIf a product arrives defective, damaged, or dead on arrival (DOA), customers are\nentitled to a full refund regardless of the 30-day window. In these cases, we also\ncover the cost of return shipping. Defective items should be reported within 14\ndays of delivery for expedited processing.\nDigital products, gift cards, and clearance items marked \"final sale\" are not\neligible for refunds under any circumstances.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 1, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0192307692307692
+          },
+          {
+            "id": 8,
+            "content": "Section 3: Engineering Deployment Process\nThe engineering team uses a monorepo structure with separate packages for the\nfrontend application, backend API services, and shared utility libraries.\nAll code changes go through a mandatory pull request review process before\nmerging into the main branch. At least one approval is required from a senior\nengineer before a PR can be merged.\nEvery deployment passes through a staging environment first, where automated\nintegration tests run against a production-like dataset. Only after staging\ntests pass does a change get promoted to production via the CI/CD pipeline.\nRollbacks can be triggered manually within 10 minutes if a production issue\nis detected, using the deployment dashboard's one-click revert feature.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 3, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0188679245283019
+          },
+          {
+            "id": 7,
+            "content": "Section 2: Customer Support Hours\nOur headquarters is located in Rawalpindi, Pakistan. The customer support team\noperates Monday through Friday, from 9:00 AM to 6:00 PM Pakistan Standard Time.\nWe are closed on all major public holidays, including Eid-ul-Fitr, Eid-ul-Adha,\nand Pakistan Independence Day (August 14th).\nFor urgent issues outside business hours, customers can submit a ticket through\nthe online portal, and a team member will respond within 24 hours on the next\nbusiness day.\nThe support team can be reached at support@examplecompany.com or by phone at\nthe number listed on our contact page. Average first-response time during\nbusiness hours is under 2 hours.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 2, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0185185185185185
+          },
+          {
+            "id": 9,
+            "content": "Section 4: Subscription Pricing Tiers\nWe offer three subscription tiers: Basic, Pro, and Enterprise.\nThe Basic tier is priced at $9.99 per month and includes access to core features\nwith a limit of 5 projects and 2 team members.\nThe Pro tier is priced at $29.99 per month and includes unlimited projects, up\nto 10 team members, and priority email support.\nThe Enterprise tier is custom-priced based on organization size and includes\ndedicated account management, a 99.9% uptime SLA, and single sign-on (SSO)\nintegration. Enterprise customers must contact sales directly for a quote.\nAnnual billing is available on all tiers at a 15% discount compared to monthly\nbilling.",
+            "metadata": { "filename": "test-knowledge-base.pdf", "pageNumber": 4, "uploadedAt": "2026-08-30T21:29:50.610Z" },
+            "rrf_score": 0.0181818181818182
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,11 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Lora, Geist_Mono } from "next/font/google";
+import { Lora, Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { AppProviders } from "@/components/app-providers";
 
 const lora = Lora({
   variable: "--font-lora",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
+});
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
 });
 
 const geistMono = Geist_Mono({
@@ -14,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Document Q&A",
+  title: "DocuSearch",
   description: "Upload documents and ask questions with cited answers",
 };
 
@@ -22,16 +28,21 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#faf9f5",
+  themeColor: "#efe7db",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${lora.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${lora.variable} ${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col overflow-x-hidden">{children}</body>
+      {/* Definite height (not min-height) is what lets the descendant message
+          list resolve `flex-1 + min-h-0 + overflow-y-auto` into a real scroll
+          box. `dvh` so mobile browser chrome doesn't cut off the input bar. */}
+      <body className="flex h-dvh flex-col overflow-hidden">
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   );
 }

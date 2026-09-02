@@ -43,6 +43,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Filename is the document's identity everywhere else in the app — the
+    // Documents page aggregates chunks by it, and DELETE addresses by it — so
+    // a second upload under the same name silently doubles a document's chunks
+    // instead of appearing as its own row. Rejected here, before any parsing,
+    // embedding, or inserts: no point paying for that work only to refuse.
+    const { data: existing, error: duplicateCheckError } = await supabaseAdmin
+      .from("documents")
+      .select("id")
+      .eq("metadata->>filename", file.name)
+      .limit(1);
+
+    if (duplicateCheckError) throw duplicateCheckError;
+
+    if (existing && existing.length > 0) {
+      return NextResponse.json(
+        {
+          error: `A document named "${file.name}" already exists. Delete the existing one first, or rename this file before uploading.`,
+        },
+        { status: 409 }
+      );
+    }
+
     const data = new Uint8Array(await file.arrayBuffer());
 
     const parser = new PDFParse({ data });

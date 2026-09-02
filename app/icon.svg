@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="DocuSearch">
+  <!--
+    Favicon: the header's chat-bubble mark, redrawn as solid shapes.
+
+    The in-app logo is a 1.6px-stroke outline, which disappears at 16px, so
+    this inverts it — filled white bubble knocked out of the terracotta accent
+    (--accent, #9e5228). Reads as a silhouette at tab size and keeps the brand
+    colour against both light and dark browser chrome.
+  -->
+  <rect width="32" height="32" rx="7.5" fill="#9E5228" />
+
+  <!-- Bubble body + tail, drawn as one filled shape. -->
+  <rect x="5" y="7" width="22" height="15" rx="6.5" fill="#FDFCFA" />
+  <path d="M10.6 19.4 L10.6 26.4 L16.4 21.2 Z" fill="#FDFCFA" />
+
+  <!-- Two dots, matching the ChatIcon used in the header. -->
+  <circle cx="12.2" cy="14.5" r="1.75" fill="#9E5228" />
+  <circle cx="19.8" cy="14.5" r="1.75" fill="#9E5228" />
+</svg>

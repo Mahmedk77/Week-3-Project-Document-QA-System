@@ -245,7 +245,7 @@ export default function ComparePage() {
       <div>
         <h1 className="font-serif text-3xl text-text-primary">Retrieval comparison</h1>
         <p className="mt-1 max-w-2xl text-xs leading-relaxed text-text-secondary">
-          Diagnostic view — runs one question through three retrieval strategies against the same
+          Diagnostic view - runs one question through three retrieval strategies against the same
           corpus. Nothing here affects the Ask flow. Redundancy is the mean pairwise cosine
           similarity between the chunks a strategy returned: lower means it covered more ground
           instead of repeating itself.

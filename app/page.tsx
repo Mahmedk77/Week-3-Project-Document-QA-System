@@ -234,7 +234,7 @@ export default function AskPage() {
                 Ask a question about your documents
               </p>
               <p className="max-w-sm text-xs text-text-muted">
-                Answers are grounded only in the files you add — nothing is retrieved from the
+                Answers are grounded only in the files you add, nothing is retrieved from the
                 open web.
               </p>
             </div>
@@ -278,7 +278,7 @@ export default function AskPage() {
               Upload a document to start asking questions
             </p>
             <p className="max-w-sm text-xs text-text-muted">
-              Answers are grounded only in the files you add — nothing is retrieved from the
+              Answers are grounded only in the files you add, nothing is retrieved from the
               open web.
             </p>
           </div>

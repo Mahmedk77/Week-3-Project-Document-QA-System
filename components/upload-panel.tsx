@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui";
 import { AlertCircleIcon, CheckIcon, DocumentTrayIllustration, FileIcon } from "./icons";
 import {
@@ -72,8 +72,22 @@ export function UploadPanel({
   onDocumentIngested?: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const queueEndRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const { items, isUploading, addFiles } = useFileUpload(onDocumentIngested);
+
+  // The queue is appended below the fold of the dialog's scroll box, so without
+  // this a picked file lands out of sight and the upload looks like nothing
+  // happened. Keyed on queue length + the last row's status (not the whole
+  // `items` array) so it fires on add and on each state change, not on every
+  // progress tick — which would fight a user scrolling up.
+  const queueLength = items.length;
+  const lastStatus = items[items.length - 1]?.status;
+
+  useEffect(() => {
+    if (queueLength === 0) return;
+    queueEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [queueLength, lastStatus]);
 
   function openPicker() {
     inputRef.current?.click();
@@ -107,11 +121,14 @@ export function UploadPanel({
   };
 
   const queue = items.length > 0 && (
-    <ul className="mt-4 flex flex-col gap-2">
-      {items.map((item) => (
-        <UploadRow key={item.id} item={item} />
-      ))}
-    </ul>
+    <>
+      <ul className="mt-4 flex flex-col gap-2">
+        {items.map((item) => (
+          <UploadRow key={item.id} item={item} />
+        ))}
+      </ul>
+      <div ref={queueEndRef} aria-hidden="true" />
+    </>
   );
 
   if (variant === "dialog") {

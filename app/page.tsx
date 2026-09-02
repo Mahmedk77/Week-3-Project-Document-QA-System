@@ -9,26 +9,29 @@ import {
   PendingMessage,
   UserMessage,
 } from "@/components/conversation";
-import { ChatIcon, FolderIcon, PaperclipIcon, PlusIcon, SendIcon } from "@/components/icons";
-import { Button } from "@/components/ui";
+import {
+  ChatIcon,
+  FileIcon,
+  FolderIcon,
+  PaperclipIcon,
+  PlusIcon,
+  SendIcon,
+} from "@/components/icons";
+import { Button, Dialog } from "@/components/ui";
 import { UploadPanel } from "@/components/upload-panel";
-import type { Citation, QueryResponse } from "@/lib/documents";
 import { formatCount } from "@/lib/documents";
-
-type Message =
-  | { id: string; kind: "user"; text: string; time: string }
-  | { id: string; kind: "pending" }
-  | { id: string; kind: "answer"; answer: string; citations: Citation[] }
-  | { id: string; kind: "error"; message: string };
-
-function nowLabel() {
-  return new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-}
 
 /* -------------------------------------------------------------------------- */
 
+/** Names shown inline on desktop before deferring the rest to the modal. */
+const INLINE_NAME_LIMIT = 2;
+
 function DocumentsSummaryRow() {
   const { documents, openUpload } = useApp();
+  const [isListOpen, setIsListOpen] = useState(false);
+
+  // Beyond this the inline list is just truncated noise, so the modal takes over.
+  const hasOverflow = documents.length > INLINE_NAME_LIMIT;
 
   return (
     <div className="flex shrink-0 items-center gap-3 rounded-xl border border-border bg-surface-2 px-3 py-2.5 sm:px-4">
@@ -42,15 +45,62 @@ function DocumentsSummaryRow() {
         <p className="text-sm font-medium text-text-primary">
           {formatCount(documents.length, "document")}
         </p>
-        <p className="truncate text-xs text-text-secondary">
-          {documents.map((doc) => doc.filename).join(" · ")}
-        </p>
+
+        <div className="flex min-w-0 items-baseline gap-2">
+          {/* Names are desktop-only — at mobile widths they truncate to nothing
+              useful, so that breakpoint goes straight to "View all". */}
+          <p className="hidden min-w-0 truncate text-xs text-text-secondary sm:block">
+            {documents
+              .slice(0, INLINE_NAME_LIMIT)
+              .map((doc) => doc.filename)
+              .join(" · ")}
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setIsListOpen(true)}
+            className={`shrink-0 text-xs text-accent underline underline-offset-2 transition-colors hover:text-accent-hover ${
+              // On desktop the inline names already say it all at 2 or fewer.
+              hasOverflow ? "" : "sm:hidden"
+            }`}
+          >
+            View all
+          </button>
+        </div>
       </div>
 
       <Button variant="primary" onClick={openUpload} className="shrink-0 px-3! py-1.5!">
         <PlusIcon className="size-3.5" />
         <span className="text-xs">Add</span>
       </Button>
+
+      <Dialog
+        open={isListOpen}
+        onClose={() => setIsListOpen(false)}
+        title="Documents"
+        subtitle={`${formatCount(documents.length, "document")} · all searched for every question`}
+        labelledBy="documents-list-title"
+        footer={
+          <Button variant="primary" onClick={() => setIsListOpen(false)}>
+            Done
+          </Button>
+        }
+      >
+        <ul className="flex flex-col gap-2">
+          {documents.map((doc) => (
+            <li
+              key={doc.filename}
+              className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-2 px-3 py-2.5"
+            >
+              <FileIcon className="mt-0.5 size-4 shrink-0 text-accent" />
+              {/* Wrapped, not truncated — the modal exists to show full names. */}
+              <span className="min-w-0 flex-1 text-sm break-words text-text-primary">
+                {doc.filename}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Dialog>
     </div>
   );
 }
@@ -96,8 +146,8 @@ function Composer({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled || isAsking}
-        placeholder="Ask a question about your documents…"
-        aria-label="Ask a question about your documents"
+        placeholder="Ask a question…"
+        aria-label="Ask a question"
         className="min-w-0 flex-1 bg-transparent py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none disabled:cursor-not-allowed"
       />
 
@@ -122,49 +172,30 @@ function Composer({
 /* -------------------------------------------------------------------------- */
 
 export default function AskPage() {
-  const { documents, isLoading, error, refresh } = useApp();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { documents, isLoading, error, refresh, messages, isAsking, ask } = useApp();
   const [question, setQuestion] = useState("");
-  const [isAsking, setIsAsking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const hasAutoScrolledRef = useRef(false);
 
   const hasDocuments = documents.length > 0;
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    const el = scrollRef.current;
+    if (!el) return;
+    // Jump on the first pass (returning from /documents lands mid-transcript);
+    // animate for messages that arrive while the user is watching.
+    el.scrollTo({
+      top: el.scrollHeight,
+      behavior: hasAutoScrolledRef.current ? "smooth" : "auto",
+    });
+    hasAutoScrolledRef.current = true;
   }, [messages]);
 
   async function handleAsk() {
     const trimmed = question.trim();
     if (!trimmed || isAsking) return;
-
-    const pendingId = `pending-${Date.now()}`;
     setQuestion("");
-    setIsAsking(true);
-    setMessages((current) => [
-      ...current,
-      { id: `user-${Date.now()}`, kind: "user", text: trimmed, time: nowLabel() },
-      { id: pendingId, kind: "pending" },
-    ]);
-
-    let resolved: Message;
-    try {
-      const response = await fetch("/api/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: trimmed }),
-      });
-      const body = (await response.json()) as QueryResponse & { error?: string };
-
-      resolved = response.ok
-        ? { id: pendingId, kind: "answer", answer: body.answer, citations: body.citations ?? [] }
-        : { id: pendingId, kind: "error", message: body.error ?? "Failed to answer the question." };
-    } catch {
-      resolved = { id: pendingId, kind: "error", message: "Couldn't reach the server." };
-    }
-
-    setMessages((current) => current.map((msg) => (msg.id === pendingId ? resolved : msg)));
-    setIsAsking(false);
+    await ask(trimmed);
   }
 
   if (isLoading) {

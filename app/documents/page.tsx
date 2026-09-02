@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useApp } from "@/components/app-providers";
 import { FileIcon, PlusIcon, TrashIcon } from "@/components/icons";
@@ -80,11 +81,24 @@ export default function DocumentsPage() {
           <TotalsLine totals={totals} />
         </div>
 
-        <Button variant="primary" onClick={openUpload} className="shrink-0">
-          <PlusIcon className="size-4" />
-          <span className="hidden sm:inline">Upload documents</span>
-          <span className="sm:hidden">Upload</span>
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          {/* Entry point to the retrieval diagnostic. Deliberately lives here
+              rather than in the header nav or the 3-item mobile bar — it's a
+              testing view, not a product surface. */}
+          <Link
+            href="/compare"
+            className="inline-flex items-center justify-center rounded-lg border border-border-strong bg-surface-card px-3.5 py-2 text-sm font-medium whitespace-nowrap text-text-primary transition-colors hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            <span className="hidden sm:inline">Compare retrieval</span>
+            <span className="sm:hidden">Compare</span>
+          </Link>
+
+          <Button variant="primary" onClick={openUpload} className="shrink-0">
+            <PlusIcon className="size-4" />
+            <span className="hidden sm:inline">Upload documents</span>
+            <span className="sm:hidden">Upload</span>
+          </Button>
+        </div>
       </div>
 
       {/* Reserved for search / sort — intentionally empty in this pass. */}

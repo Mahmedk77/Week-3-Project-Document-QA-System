@@ -11,7 +11,7 @@ const MATCH_COUNT = 5;
 // so we gate on raw cosine similarity instead. Starting value — not yet tuned
 // against real data, expect to adjust once we see similarity numbers for a
 // known-relevant vs. known-irrelevant question.
-const MIN_SIMILARITY = 0.35;
+export const MIN_SIMILARITY = 0.35;
 
 const responseSchema = z.object({
   answer: z.string(),

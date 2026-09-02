@@ -31,6 +31,19 @@ export interface IngestResponse {
   pagesProcessed: number;
 }
 
+/**
+ * One turn in the Ask transcript.
+ *
+ * Lives here rather than in the page because the conversation is held by
+ * <AppProviders> — the page component unmounts on every route change, so
+ * page-local state would drop the transcript on a trip to /documents.
+ */
+export type ChatMessage =
+  | { id: string; kind: "user"; text: string; time: string }
+  | { id: string; kind: "pending" }
+  | { id: string; kind: "answer"; answer: string; citations: Citation[] }
+  | { id: string; kind: "error"; message: string };
+
 /** One ingested document, aggregated from its chunk rows by `GET /api/documents`. */
 export interface DocumentSummary {
   filename: string;

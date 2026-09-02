@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useApp } from "@/components/app-providers";
 import { AlertCircleIcon, FileIcon, SendIcon } from "@/components/icons";
 import { Button } from "@/components/ui";
-import type { ComparedChunk, CompareResponse, StrategyResult } from "@/lib/compare";
+import type { ComparedChunk, StrategyResult } from "@/lib/compare";
 
 /* -------------------------------------------------------------------------- */
 
@@ -17,6 +18,24 @@ function ChunkCard({
   minSimilarity: number;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isClamped, setIsClamped] = useState(false);
+  const textRef = useRef<HTMLParagraphElement>(null);
+
+  // Whether the toggle is worth showing depends on whether the clamp actually
+  // cut anything off — which only the rendered box knows, and which changes
+  // with column width. A ResizeObserver fires on mount and on every resize,
+  // including the height change from expanding/collapsing.
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver(() => {
+      setIsClamped(el.scrollHeight > el.clientHeight + 1);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Dimmed, never removed — seeing what a strategy *actually* returned,
   // including the junk, is the entire point of this page.
   const isBelowFloor = chunk.similarity !== null && chunk.similarity < minSimilarity;
@@ -70,6 +89,7 @@ function ChunkCard({
       )}
 
       <p
+        ref={textRef}
         className={`mt-2 text-xs leading-relaxed whitespace-pre-wrap text-text-secondary ${
           isExpanded ? "" : "line-clamp-6"
         }`}
@@ -77,13 +97,18 @@ function ChunkCard({
         {chunk.content}
       </p>
 
-      <button
-        type="button"
-        onClick={() => setIsExpanded((open) => !open)}
-        className="mt-1.5 text-[11px] text-accent underline underline-offset-2 hover:text-accent-hover"
-      >
-        {isExpanded ? "Show less" : "Show full chunk"}
-      </button>
+      {/* Only offered when the text is genuinely cut off. `isExpanded` keeps
+          "Show less" available once open, since an expanded box measures as
+          un-clamped. */}
+      {(isClamped || isExpanded) && (
+        <button
+          type="button"
+          onClick={() => setIsExpanded((open) => !open)}
+          className="mt-1.5 text-[11px] text-accent underline underline-offset-2 hover:text-accent-hover"
+        >
+          {isExpanded ? "Show less" : "Show full chunk"}
+        </button>
+      )}
     </li>
   );
 }
@@ -189,35 +214,21 @@ function StrategyColumn({
 /* -------------------------------------------------------------------------- */
 
 export default function ComparePage() {
-  const [question, setQuestion] = useState("");
-  const [result, setResult] = useState<CompareResponse | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // State lives in <AppProviders> so a finished run — which is slow to
+  // produce — survives navigating to Documents or Ask and back, and so the
+  // header's "Clear results" can reset it.
+  const {
+    comparison: result,
+    compareQuestion: question,
+    setCompareQuestion: setQuestion,
+    isComparing: isRunning,
+    compareError: error,
+    runComparison,
+  } = useApp();
 
   async function handleRun() {
-    const trimmed = question.trim();
-    if (!trimmed || isRunning) return;
-
-    setIsRunning(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/compare", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: trimmed }),
-      });
-      const body = (await response.json()) as CompareResponse & { error?: string };
-
-      if (!response.ok) {
-        setError(body.error ?? "Failed to run the comparison.");
-      } else {
-        setResult(body);
-      }
-    } catch {
-      setError("Couldn't reach the server.");
-    } finally {
-      setIsRunning(false);
-    }
+    if (!question.trim() || isRunning) return;
+    await runComparison(question);
   }
 
   // Lowest mean pairwise similarity = least repetitive result set.

@@ -17,7 +17,8 @@ import type {
   DocumentsResponse,
   QueryResponse,
 } from "@/lib/documents";
-import { ChatIcon, CloseIcon, FolderIcon, PlusIcon } from "./icons";
+import type { CompareResponse } from "@/lib/compare";
+import { ChatIcon, FolderIcon, PlusIcon } from "./icons";
 import { Button, Dialog } from "./ui";
 import { UploadPanel } from "./upload-panel";
 
@@ -34,6 +35,16 @@ interface AppContextValue {
   isAsking: boolean;
   ask: (question: string) => Promise<void>;
   clearConversation: () => void;
+
+  /* Retrieval comparison — same reasoning: a run is slow and worth keeping
+     across a trip to another page. In memory only, unlike the conversation. */
+  comparison: CompareResponse | null;
+  compareQuestion: string;
+  setCompareQuestion: (question: string) => void;
+  isComparing: boolean;
+  compareError: string | null;
+  runComparison: (question: string) => Promise<void>;
+  clearComparison: () => void;
 }
 
 const EMPTY_TOTALS = { documents: 0, pages: 0, chunks: 0 };
@@ -107,7 +118,7 @@ const NAV_ITEMS = [
 
 function Header() {
   const pathname = usePathname();
-  const { messages, clearConversation } = useApp();
+  const { messages, clearConversation, comparison, compareQuestion, clearComparison } = useApp();
 
   return (
     <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-4 py-3.5 sm:px-6">
@@ -117,6 +128,39 @@ function Header() {
       </Link>
 
       <div className="flex items-center gap-3">
+        {/* Reset control sits before the nav — it acts on the page you're
+            already on, so it reads left-to-right as "this page" then "go
+            elsewhere".
+
+            Disabled rather than hidden while empty, so the header doesn't
+            change shape mid-conversation. Each page gets the control for
+            *its own* state, or none at all — an allow-list, not a deny-list,
+            so a new route can't inherit a button that doesn't belong to it.
+            /documents has nothing to reset, so it stays empty. */}
+        {pathname === "/" && (
+          <Button
+            onClick={clearConversation}
+            disabled={messages.length === 0}
+            title={messages.length === 0 ? "No conversation to clear" : "Clear conversation"}
+            className="shrink-0 px-3! py-1.5! whitespace-nowrap"
+          >
+            <span className="text-xs">Clear conversation</span>
+          </Button>
+        )}
+
+        {/* Named for what it actually clears — calling it "conversation" here
+            is what made the shared button misleading in the first place. */}
+        {pathname === "/compare" && (
+          <Button
+            onClick={clearComparison}
+            disabled={comparison === null && compareQuestion.trim().length === 0}
+            title={comparison === null ? "No results to clear" : "Clear comparison results"}
+            className="shrink-0 px-3! py-1.5! whitespace-nowrap"
+          >
+            <span className="text-xs">Clear results</span>
+          </Button>
+        )}
+
         {/* Desktop nav. No "History" item — cross-session history is not built. */}
         <nav className="hidden items-center gap-1 md:flex">
           {NAV_ITEMS.map(({ href, label }) => {
@@ -137,34 +181,12 @@ function Header() {
             );
           })}
         </nav>
-
-        {/* Takes the slot the mockups gave a decorative avatar — this build has
-            no accounts, so it goes to a real control instead. Disabled rather
-            than hidden while empty, so the header doesn't change shape
-            mid-conversation.
-
-            Shown only on Ask — the one page the conversation actually lives
-            on. Anywhere else it's at best redundant and at worst misleading
-            (on /compare, which has its own question box, it reads as clearing
-            the comparison). Disabling isn't enough: a greyed control still
-            implies it belongs to the page you're looking at. An allow-list,
-            not a deny-list, so new routes don't inherit it by default. */}
-        {pathname === "/" && (
-          <Button
-            onClick={clearConversation}
-            disabled={messages.length === 0}
-            title={messages.length === 0 ? "No conversation to clear" : "Clear conversation"}
-            className="shrink-0 px-3! py-1.5! whitespace-nowrap"
-          >
-            <span className="text-xs">Clear conversation</span>
-          </Button>
-        )}
       </div>
     </header>
   );
 }
 
-function MobileNav({ isUploadOpen, onToggleUpload }: { isUploadOpen: boolean; onToggleUpload: () => void }) {
+function MobileNav({ onOpenUpload }: { onOpenUpload: () => void }) {
   const pathname = usePathname();
 
   return (
@@ -186,15 +208,17 @@ function MobileNav({ isUploadOpen, onToggleUpload }: { isUploadOpen: boolean; on
         );
       })}
 
-      {/* Raised centre action — opens the Add documents sheet, and turns into
-          its close control while that sheet is open. */}
+      {/* Raised centre action — opens the Add documents sheet. It stays a "+"
+          rather than swapping to an "×": the sheet is full-screen and covers
+          this bar, so the close state was never actually visible. The sheet's
+          own header × is the close control. */}
       <button
         type="button"
-        onClick={onToggleUpload}
-        aria-label={isUploadOpen ? "Close add documents" : "Add documents"}
+        onClick={onOpenUpload}
+        aria-label="Add documents"
         className="absolute -top-5 left-1/2 grid size-13 -translate-x-1/2 place-items-center rounded-full bg-accent text-accent-contrast shadow-[0_4px_14px_rgba(158,82,40,0.32)] transition-colors hover:bg-accent-hover"
       >
-        {isUploadOpen ? <CloseIcon className="size-5" /> : <PlusIcon className="size-6" />}
+        <PlusIcon className="size-6" />
       </button>
     </nav>
   );
@@ -270,6 +294,41 @@ export function AppProviders({ children }: { children: ReactNode }) {
     setIsAsking(false);
   }, []);
 
+  const [comparison, setComparison] = useState<CompareResponse | null>(null);
+  const [compareQuestion, setCompareQuestion] = useState("");
+  const [isComparing, setIsComparing] = useState(false);
+  const [compareError, setCompareError] = useState<string | null>(null);
+
+  const runComparison = useCallback(async (question: string) => {
+    const trimmed = question.trim();
+    if (!trimmed) return;
+
+    setIsComparing(true);
+    setCompareError(null);
+    try {
+      const response = await fetch("/api/compare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: trimmed }),
+      });
+      const body = (await response.json()) as CompareResponse & { error?: string };
+
+      if (!response.ok) setCompareError(body.error ?? "Failed to run the comparison.");
+      else setComparison(body);
+    } catch {
+      setCompareError("Couldn't reach the server.");
+    } finally {
+      setIsComparing(false);
+    }
+  }, []);
+
+  /** Full reset of the page — results, the question in the box, and any error. */
+  const clearComparison = useCallback(() => {
+    setComparison(null);
+    setCompareQuestion("");
+    setCompareError(null);
+  }, []);
+
   const clearConversation = useCallback(() => {
     setMessages([]);
     try {
@@ -320,8 +379,31 @@ export function AppProviders({ children }: { children: ReactNode }) {
       isAsking,
       ask,
       clearConversation,
+      comparison,
+      compareQuestion,
+      setCompareQuestion,
+      isComparing,
+      compareError,
+      runComparison,
+      clearComparison,
     }),
-    [documents, totals, isLoading, error, refresh, messages, isAsking, ask, clearConversation]
+    [
+      documents,
+      totals,
+      isLoading,
+      error,
+      refresh,
+      messages,
+      isAsking,
+      ask,
+      clearConversation,
+      comparison,
+      compareQuestion,
+      isComparing,
+      compareError,
+      runComparison,
+      clearComparison,
+    ]
   );
 
   return (
@@ -333,10 +415,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
         <main className="flex min-h-0 flex-1 flex-col pb-20 md:pb-0">{children}</main>
       </div>
 
-      <MobileNav
-        isUploadOpen={isUploadOpen}
-        onToggleUpload={() => setIsUploadOpen((open) => !open)}
-      />
+      <MobileNav onOpenUpload={() => setIsUploadOpen(true)} />
 
       <Dialog
         open={isUploadOpen}

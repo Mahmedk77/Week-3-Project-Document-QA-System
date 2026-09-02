@@ -75,7 +75,9 @@ export default function DocumentsPage() {
     /* Wider cap than the chat column — the table's five columns benefit from
        the extra horizontal room that prose and chat bubbles don't. */
     <div className="mx-auto flex w-full max-w-6xl min-h-0 flex-1 flex-col gap-4 px-4 py-5 sm:px-6">
-      <div className="flex items-start justify-between gap-4">
+      {/* Stacked on mobile — the serif title can't shrink below its word width,
+          so side-by-side buttons collided with it on narrow screens. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h1 className="font-serif text-3xl text-text-primary">Documents</h1>
           <TotalsLine totals={totals} />

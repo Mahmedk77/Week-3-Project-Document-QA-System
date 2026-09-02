@@ -22,6 +22,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "DocuSearch",
   description: "Upload documents and ask questions with cited answers",
+  icons: {
+    icon: "/apple-icon.png", 
+  }
 };
 
 export const viewport: Viewport = {

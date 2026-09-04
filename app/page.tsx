@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/app-providers";
 import {
   AnswerMessage,
+  ClarificationMessage,
   ErrorMessage,
   NotFoundMessage,
   PendingMessage,
@@ -252,7 +253,9 @@ export default function AskPage() {
                     // Branches on where the answer came from, not on whether it
                     // has citations — an uncited answer is usually a real
                     // general-knowledge one, not a failure.
-                    return message.answerSource === "none" ? (
+                    return message.answerSource === "clarification" ? (
+                      <ClarificationMessage key={message.id} question={message.answer} />
+                    ) : message.answerSource === "none" ? (
                       <NotFoundMessage key={message.id} answer={message.answer} />
                     ) : (
                       <AnswerMessage

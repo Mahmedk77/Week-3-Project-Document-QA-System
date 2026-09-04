@@ -228,6 +228,23 @@ export function NotFoundMessage({ answer }: { answer: string }) {
   );
 }
 
+/**
+ * `answerSource: "clarification"` — the question referred to something the
+ * conversation doesn't pin down ("what about her?" with no "her" yet), so it
+ * asks instead of guessing. Framed as a question, not a failure: nothing went
+ * wrong, and the user's next message resolves it.
+ */
+export function ClarificationMessage({ question }: { question: string }) {
+  return (
+    <AssistantRow>
+      <div className="flex items-start gap-2.5 rounded-xl rounded-tl-sm border border-accent-soft-border bg-accent-soft px-4 py-3.5">
+        <ChatIcon className="mt-0.5 size-4.5 shrink-0 text-accent" />
+        <p className="min-w-0 text-sm leading-relaxed text-text-primary">{question}</p>
+      </div>
+    </AssistantRow>
+  );
+}
+
 export function PendingMessage() {
   return (
     <AssistantRow>

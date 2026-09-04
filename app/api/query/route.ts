@@ -2,10 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { embeddings, queryModel, supabaseAdmin } from "@/lib/models";
 import { listDocumentFilenames } from "@/lib/corpus";
+import { bareReferenceKind, looksContextDependent, resolveFollowUp } from "@/lib/follow-up";
+import type { ChatTurn } from "@/lib/documents";
 
 export const runtime = "nodejs";
 
 const MAX_QUESTION_LENGTH = 2000;
+
+/** Turns of transcript accepted from the client, newest kept. */
+const MAX_HISTORY_TURNS = 6;
+
+/** Per-turn cap, so a long earlier answer can't crowd out the retrieved context. */
+const MAX_HISTORY_TURN_LENGTH = 1200;
 
 /**
  * Chunks handed to the model.
@@ -70,6 +78,8 @@ const responseSchema = z.object({
    * documents, rather than as a failure.
    */
   answerSource: z.enum(["documents", "general_knowledge", "none"]),
+  // "clarification" is produced by the route itself, never by this model — the
+  // follow-up resolver decides it before retrieval has happened.
   citations: z.array(
     z.object({
       filename: z.string(),
@@ -119,6 +129,29 @@ function selectWithDocumentQuota(chunks: RetrievedChunk[], limit: number): Retri
   }
 
   return chunks.filter((chunk) => picked.has(chunk)).slice(0, limit);
+}
+
+/**
+ * Reads the transcript the client posted, defensively — it's user input like
+ * any other. Anything malformed is dropped rather than rejected: a follow-up
+ * answered without history is a worse answer, but an error is a worse product.
+ */
+function parseHistory(value: unknown): ChatTurn[] {
+  if (!Array.isArray(value)) return [];
+
+  const turns: ChatTurn[] = [];
+  for (const entry of value) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const { role, content } = entry as { role?: unknown; content?: unknown };
+    if (role !== "user" && role !== "assistant") continue;
+    if (typeof content !== "string") continue;
+
+    const trimmed = content.trim();
+    if (trimmed.length === 0) continue;
+    turns.push({ role, content: trimmed.slice(0, MAX_HISTORY_TURN_LENGTH) });
+  }
+
+  return turns.slice(-MAX_HISTORY_TURNS);
 }
 
 /** Generic filename debris that identifies no document in particular. */
@@ -255,8 +288,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const history = parseHistory((body as { history?: unknown } | null)?.history);
+
+    // step 0: a follow-up has to be made standalone before it's embedded —
+    // "what about her?" carries no meaning on its own, and its keywords are all
+    // stopwords. Gated so a first question pays nothing for this.
+    const isFollowUp = history.length > 0 && looksContextDependent(question);
+    const openingReference = history.length === 0 ? bareReferenceKind(question) : null;
+
+    const { standaloneQuestion, clarification } = isFollowUp
+      ? await resolveFollowUp(question, history)
+      : {
+          standaloneQuestion: question,
+          // Opening a conversation with "what about her?" names a person no
+          // library can disambiguate, so it's settled here without a model
+          // call. An impersonal reference ("how does it end") waits until the
+          // library is known — with one document, "it" is that document.
+          clarification:
+            openingReference === "personal"
+              ? "Who do you mean? Name the person or character and I'll look them up."
+              : null,
+        };
+
+    // Asking beats guessing: with nothing in the conversation to resolve the
+    // reference against, retrieval would run on an invented antecedent and
+    // return confidently wrong sources.
+    if (clarification) {
+      return NextResponse.json({
+        answer: clarification,
+        answerSource: "clarification",
+        citations: [],
+        documentsNotCovered: [],
+        retrievedChunks: [],
+      });
+    }
+
     // step 1: turn the question into a vector so we can search by meaning, not just keywords
-    const queryEmbedding = await embeddings.embedQuery(question);
+    const queryEmbedding = await embeddings.embedQuery(standaloneQuestion);
 
     // step 2: ask the db for the best-matching chunks (keyword + vector, fused
     // server-side), and in parallel read what's in the library at all — the
@@ -265,7 +333,9 @@ export async function POST(request: NextRequest) {
     // to win a similarity race.
     const [search, filenames] = await Promise.all([
       supabaseAdmin.rpc("hybrid_search_documents", {
-        query_text: question,
+        // The resolved question drives the keyword half too — the raw follow-up
+        // would reduce to stopwords and contribute nothing to the fusion.
+        query_text: standaloneQuestion,
         query_embedding: queryEmbedding,
         match_count: CANDIDATE_COUNT,
       }),
@@ -279,6 +349,19 @@ export async function POST(request: NextRequest) {
 
     if (search.error) {
       throw search.error;
+    }
+
+    // "How does it end" is a fair question of a one-document library and an
+    // unanswerable one of a two-document library. Deferred to here because it
+    // needs the manifest; the retrieval above is wasted only on this rare path.
+    if (openingReference === "impersonal" && filenames.length > 1) {
+      return NextResponse.json({
+        answer: `Which document do you mean — ${filenames.join(", or ")}?`,
+        answerSource: "clarification",
+        citations: [],
+        documentsNotCovered: [],
+        retrievedChunks: [],
+      });
     }
 
     const retrievedChunks = (search.data ?? []) as RetrievedChunk[];
@@ -352,8 +435,13 @@ export async function POST(request: NextRequest) {
     // step 4: ask the model to answer + cite, forced into our exact schema (no free-form JSON to parse)
     const structuredQueryModel = queryModel.withStructuredOutput(responseSchema);
 
+    // The transcript goes in as real turns, so the answer can follow on from
+    // what was already said instead of reintroducing the same document every
+    // time. The question asked is the user's own wording, not the rewrite —
+    // the rewrite exists to steer retrieval, not to put words in their mouth.
     const result = await structuredQueryModel.invoke([
       { role: "system", content: SYSTEM_PROMPT },
+      ...history.map((turn) => ({ role: turn.role, content: turn.content })),
       {
         role: "user",
         content: `Documents in the user's library:\n${manifestBlock}\n\n${contextSection}\n\nQuestion: ${question}`,
@@ -381,7 +469,9 @@ export async function POST(request: NextRequest) {
     // a correction — but not when they named one that returned nothing, which
     // is precisely when they need to be told.
     const askedAbout = (filename: string) => {
-      const asked = question.toLowerCase();
+      // The resolved question, since a follow-up like "and its main idea?" only
+      // names a document once the reference has been filled in.
+      const asked = standaloneQuestion.toLowerCase();
       return filenameTokens(filename).some((token) => asked.includes(token));
     };
     const namedACoveredDocument =

@@ -27,7 +27,34 @@ export interface RetrievedChunk {
  * and the UI badges it rather than showing the "couldn't find that" card. Only
  * `none` means no answer was possible at all.
  */
-export type AnswerSource = "documents" | "general_knowledge" | "none";
+export type AnswerSource = "documents" | "general_knowledge" | "none" | "clarification";
+
+/**
+ * One turn of conversation, as sent to `/api/query`.
+ *
+ * The transcript lives in the browser (React state, mirrored to sessionStorage)
+ * and is posted with each question so a follow-up like "what about her?" can be
+ * resolved into a standalone question before anything is embedded. Nothing is
+ * stored server-side — see HANDOFF.md on why this isn't a database feature.
+ */
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+/**
+ * The last `limit` turns of a transcript, in the shape `/api/query` expects.
+ * Pending and error messages carry no conversational content, so they're
+ * skipped rather than sent as empty turns.
+ */
+export function toHistory(messages: ChatMessage[], limit: number): ChatTurn[] {
+  const turns: ChatTurn[] = [];
+  for (const message of messages) {
+    if (message.kind === "user") turns.push({ role: "user", content: message.text });
+    else if (message.kind === "answer") turns.push({ role: "assistant", content: message.answer });
+  }
+  return turns.slice(-limit);
+}
 
 export interface QueryResponse {
   answer: string;

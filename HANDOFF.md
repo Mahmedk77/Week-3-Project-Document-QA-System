@@ -230,20 +230,70 @@ doesn't pay.
   actually came from, falling back to the locator and dropping only what
   matches neither.
 
+## Conversational follow-ups — built, and NOT with memory classes
+
+`/api/query` now accepts an optional `history: {role, content}[]`. The
+browser already held the transcript (React state + sessionStorage); it was
+simply never sent. Nothing is stored server-side.
+
+**Why not `ConversationBufferMemory` / `ConversationSummaryMemory`:** they
+don't exist in what's installed. `@langchain/core` 1.2.9 ships only the
+abstract `BaseMemory` / `BaseChatMessageHistory`; the concrete classes live
+in the `langchain` package, which isn't a dependency — and adding it risks
+the same zod v3/v4 peer conflict that already blocked `@langchain/community`.
+They also exist to feed the `Chain` abstraction this app doesn't use (it
+calls `queryModel.withStructuredOutput(...).invoke([...])` directly). And
+`ConversationSummaryMemory` solves "the transcript outgrew the context
+window", which a 6-turn cap on gpt-4o-mini does not have. **Supabase-backed
+history is a different feature** — surviving a device or browser change —
+and is still deliberately not built.
+
+**How it works** (`lib/follow-up.ts`):
+
+- `looksContextDependent()` gates the rewrite so a first question pays
+  nothing. Loose on purpose — the resolver echoes a standalone question back
+  unchanged, so firing needlessly is cheap and missing one is not.
+- `resolveFollowUp()` rewrites against the transcript: "what about her
+  grandmother?" → "What is Nastenka's grandmother like in White Nights?".
+  **The rewrite is what gets embedded, and what goes to `query_text`** — the
+  raw follow-up embeds to nothing and reduces to stopwords on the keyword
+  half. The user's original wording still goes to the answering step, so a
+  bad rewrite degrades retrieval rather than changing the question answered.
+  On failure it falls back to the question as typed.
+- `bareReferenceKind()` handles a conversation that *opens* with a reference.
+  Personal ("what about her?") is unanswerable however many documents are
+  loaded, so it's refused without a model call in ~30ms. Impersonal ("how
+  does it end") is only ambiguous with more than one document, so that check
+  waits until the manifest is known and then names the documents to choose
+  between. With a single-document library it just answers.
+- Clarifications return `answerSource: "clarification"` and render as a
+  question, not the orange failure card.
+
+**Two things the eval caught**, both worth remembering:
+
+1. The resolver initially asked for clarification on "and what causes
+   empires to decline?" — a complete question whose leading "and" it read as
+   a reference. Broad is not the same as ambiguous, and asking someone to
+   narrow a perfectly good question is worse than answering it. The prompt
+   now says so explicitly.
+2. It asked "Which empire are you referring to?" in response to "what about
+   her?" — clarifying against the *previous topic* rather than the
+   unresolved word. It now asks about the reference itself.
+
+Multi-turn eval (7 conversations, each played through for real with the
+prior answer fed back as history): pronoun across turns, ellipsis, cross-
+document pronoun, mid-chat topic switch, bare pronoun with and without
+history, and "explain that more simply" — **all 7 pass**, with the 15
+single-turn queries unregressed.
+
 ### Still open, in priority order
 
-1. **No conversational memory.** `/api/query` takes a bare `question`, so
-   "what about her?" has no antecedent — and it doesn't ask, it *guesses*
-   (it picked Nastenka and was right by luck; with more documents loaded
-   that pattern produces confident nonsense). Needs the transcript passed
-   from the client plus antecedent resolution, and a rule to ask rather
-   than guess.
-2. **Chunk dilution and position-blindness.** "How old is nastenka" (fact
+1. **Chunk dilution and position-blindness.** "How old is nastenka" (fact
    buried in a big chunk) and "how does it end" (retrieval has no notion of
    where a chunk sits in the document, so it returns the emotional peak
    rather than the last pages) both need ingest-level work — smaller chunks
    or sentence-window retrieval, plus positional metadata.
-3. **Mojibake in stored text.** Curly quotes were mangled at ingest
+2. **Mojibake in stored text.** Curly quotes were mangled at ingest
    (`oneâs soul`, `donât read them`) and leak into quoted citations.
    Encoding bug in the PDF parse step. Fix it with (2), since both need a
    re-ingest of the corpus.

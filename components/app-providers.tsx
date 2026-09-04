@@ -8,6 +8,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -17,6 +18,7 @@ import type {
   DocumentsResponse,
   QueryResponse,
 } from "@/lib/documents";
+import { toHistory } from "@/lib/documents";
 import type { CompareResponse } from "@/lib/compare";
 import { ChatIcon, FolderIcon, PlusIcon } from "./icons";
 import { Button, Dialog } from "./ui";
@@ -63,6 +65,13 @@ function nowLabel() {
 const CONVERSATION_KEY = "docusearch:conversation:v1";
 
 const RENDERABLE_KINDS = new Set(["user", "answer", "error"]);
+
+/**
+ * Turns of transcript posted with each question, so "what about her?" can be
+ * resolved server-side. Three exchanges is enough to carry a reference without
+ * spending the whole prompt budget on conversation; the route caps it again.
+ */
+const HISTORY_TURNS_SENT = 6;
 
 /**
  * A `pending` turn is rewritten on the way out. The request that would have
@@ -258,10 +267,20 @@ export function AppProviders({ children }: { children: ReactNode }) {
     }
   }, [messages, isConversationRestored]);
 
+  // `ask` is deliberately stable (no deps), so the transcript reaches it
+  // through a ref rather than by rebuilding the callback on every message.
+  const messagesRef = useRef<ChatMessage[]>([]);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
   const ask = useCallback(async (question: string) => {
     const trimmed = question.trim();
     if (!trimmed) return;
 
+    // Captured before the new turn is appended: the question being asked
+    // belongs in `question`, not in its own history.
+    const history = toHistory(messagesRef.current, HISTORY_TURNS_SENT);
     const pendingId = `pending-${Date.now()}`;
     setIsAsking(true);
     setMessages((current) => [
@@ -275,7 +294,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
       const response = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: trimmed }),
+        body: JSON.stringify({ question: trimmed, history }),
       });
       const body = (await response.json()) as QueryResponse & { error?: string };
 

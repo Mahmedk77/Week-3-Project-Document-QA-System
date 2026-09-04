@@ -262,7 +262,7 @@ export default function AskPage() {
                         key={message.id}
                         answer={message.answer}
                         citations={message.citations}
-                        isGeneralKnowledge={message.answerSource === "general_knowledge"}
+                        answerSource={message.answerSource}
                         documentsNotCovered={message.documentsNotCovered}
                       />
                     );

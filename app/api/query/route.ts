@@ -77,7 +77,7 @@ const responseSchema = z.object({
    * knowledge answer is shown with a badge saying it isn't from the user's
    * documents, rather than as a failure.
    */
-  answerSource: z.enum(["documents", "general_knowledge", "none"]),
+  answerSource: z.enum(["documents", "mixed", "general_knowledge", "none"]),
   // "clarification" is produced by the route itself, never by this model — the
   // follow-up resolver decides it before retrieval has happened.
   citations: z.array(
@@ -256,12 +256,14 @@ How to answer:
 
 Set answerSource to:
 - "documents" — the answer comes wholly or mainly from the context entries or the library listing.
-- "general_knowledge" — the documents didn't cover it and you answered from your own knowledge.
+- "mixed" — part of it is drawn from the documents and part is your own knowledge. "Who is Dostoevsky?" is the standard case: that he wrote the book in this library is in the context, that he was a Russian novelist is yours. Use this instead of forcing a two-sided answer into a one-sided label.
+- "general_knowledge" — the documents didn't cover it at all and the whole answer is your own knowledge.
 - "none" — you gave no answer at all. If you answered the question in any form, this is the wrong value.
 
 Citations:
 - Cite only claims actually drawn from the context. Each citation's filename and page must appear on a context entry above, and each quote must be copied verbatim from that entry — not paraphrased.
-- Citations are for answerSource "documents" only. When answering from general knowledge, citations must be an empty array. Never attach a citation to a claim it doesn't support just to make an answer look grounded.`;
+- Cite on "documents" and "mixed" answers alike — on a mixed answer, cite the part that came from the documents. A pure "general_knowledge" answer has nothing to cite, so its citations must be empty.
+- Never attach a citation to a claim it doesn't support just to make an answer look grounded.`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -449,15 +451,30 @@ export async function POST(request: NextRequest) {
     ]);
 
     // Structural backstop on the looser prompt: every citation is checked
-    // against the entries the model was actually shown — and re-anchored to the
-    // chunk its quote came from — while citations are dropped entirely unless
-    // the answer claims to be grounded.
+    // against the entries the model was actually shown, and re-anchored to the
+    // chunk its quote came from.
+    //
+    // Deliberately NOT gated on answerSource. Whether a quote really came from a
+    // retrieved chunk is objective; which label the answer deserves is a
+    // judgement, and the model makes it inconsistently — "who is dostoevsky?"
+    // came back `documents` twice and `general_knowledge` once on identical
+    // retrieval. Gating one on the other meant a coin flip could delete a
+    // citation that had already been verified.
     const citations =
-      result.answerSource === "documents"
-        ? result.citations
+      result.answerSource === "none"
+        ? []
+        : result.citations
             .map((citation) => resolveCitation(citation, relevantChunks))
-            .filter((citation): citation is NonNullable<typeof citation> => citation !== null)
-        : [];
+            .filter((citation): citation is NonNullable<typeof citation> => citation !== null);
+
+    // The evidence settles the label where the two disagree, so the badge can't
+    // claim an answer isn't from the library while showing a source from it.
+    const answerSource =
+      result.answerSource === "general_knowledge" && citations.length > 0
+        ? "mixed"
+        : result.answerSource === "mixed" && citations.length === 0
+          ? "general_knowledge"
+          : result.answerSource;
 
     // Told which documents it couldn't speak for, the model still answered as
     // though the library held only the one it had excerpts from — so scope is
@@ -479,7 +496,9 @@ export async function POST(request: NextRequest) {
       !uncoveredDocuments.some(askedAbout);
 
     const documentsNotCovered =
-      result.answerSource === "documents" &&
+      // A mixed answer still speaks for the documents it drew on, so it owes
+      // the same disclosure about the ones it didn't.
+      (answerSource === "documents" || answerSource === "mixed") &&
       filenames.length > 1 &&
       coveredDocuments.size > 0 &&
       !namedACoveredDocument &&
@@ -490,7 +509,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       answer: result.answer,
-      answerSource: result.answerSource,
+      answerSource,
       citations,
       documentsNotCovered,
       retrievedChunks, // the full pre-filter set, so you can see near-misses and their scores

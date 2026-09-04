@@ -286,6 +286,44 @@ document pronoun, mid-chat topic switch, bare pronoun with and without
 history, and "explain that more simply" — **all 7 pass**, with the 15
 single-turn queries unregressed.
 
+## Answer provenance — `mixed`, and why citations aren't gated on it
+
+"Who is dostoevsky?" produced `documents` with a citation twice and
+`general_knowledge` with **no** citation once, on **identical retrieval** (30
+chunks, all White Nights, title page included, top similarity 0.478–0.488).
+The badge then told the user the answer wasn't from their documents while
+the answer said he wrote the book that's in their library.
+
+The cause wasn't retrieval or the prompt. That answer is genuinely two
+things — his identity is the model's own knowledge, his authorship of *White
+Nights* is on the title page in the corpus — and with only three labels
+available it picked one at random from run to run. The route then discarded
+the citations on anything that wasn't `documents`, so a coin flip deleted a
+citation that had **already passed quote verification**.
+
+Two changes:
+
+1. **`mixed` added to `answerSource`.** Gives a two-sided answer a box that
+   fits, instead of forcing it into a one-sided one.
+2. **Citations are no longer gated on `answerSource`.** Whether a quote came
+   from a retrieved chunk is objective and already checked by
+   `resolveCitation()`; which label the answer deserves is a judgement the
+   model makes inconsistently. Gating the first on the second let an
+   unreliable signal destroy a reliable one. Citations now render on their
+   own merit, and the route **reconciles the label to the evidence**:
+   `general_knowledge` + verified citations becomes `mixed`, `mixed` with
+   none becomes `general_knowledge`.
+
+The label now only drives the badge, so a relabel can never strip a source
+off the screen. **Verified: 4/4 identical runs return `mixed` with the
+citation intact**, where the same question used to flip. Regressions clean —
+"who won the 2022 world cup?" stays `general_knowledge` with 0 citations,
+"what opera did they go to" stays `documents`, and the manifest question
+still answers with `documents` and no citations.
+
+The principle generalises, and it's the same one as the coverage note: **when
+a guarantee matters, compute it — don't let a model judgement gate it.**
+
 ### Still open, in priority order
 
 1. **Chunk dilution and position-blindness.** "How old is nastenka" (fact
@@ -429,7 +467,7 @@ if this needs to be redone at a different corpus size:
   answer: string,
   // "general_knowledge" is a real answer the docs didn't cover, not a failure —
   // the UI badges it. Only "none" renders as "couldn't find that".
-  answerSource: "documents" | "general_knowledge" | "none",
+  answerSource: "documents" | "mixed" | "general_knowledge" | "none" | "clarification",
   citations: { filename: string, page: number, quote: string }[],
   // Library documents this answer does NOT speak for (nothing relevant retrieved
   // from them). Computed in the route, rendered by the UI — see the eval section.

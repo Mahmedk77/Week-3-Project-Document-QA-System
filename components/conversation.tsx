@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import type { Citation } from "@/lib/documents";
+import type { AnswerSource, Citation } from "@/lib/documents";
 import type { InlineSpan } from "@/lib/rich-text";
 import { parseAnswer } from "@/lib/rich-text";
 import { AlertCircleIcon, ChatIcon, ChevronDownIcon, FileIcon } from "./icons";
@@ -184,10 +184,22 @@ function AnswerBody({ answer, citationCount, onMarkerClick }: {
 /* Assistant message variants                                                 */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Badge copy per provenance. `documents` needs none — the citations say it.
+ *
+ * `mixed` is its own line rather than a softer "general knowledge" one because
+ * the two claims are different: one says nothing here came from your library,
+ * the other says some of it did and the sources below are that part.
+ */
+const PROVENANCE_NOTE: Partial<Record<AnswerSource, string>> = {
+  general_knowledge: "Not from your documents · general knowledge",
+  mixed: "Partly from your documents · the rest is general knowledge",
+};
+
 export function AnswerMessage({
   answer,
   citations,
-  isGeneralKnowledge = false,
+  answerSource,
   documentsNotCovered = [],
 }: {
   answer: string;
@@ -199,22 +211,23 @@ export function AnswerMessage({
    */
   documentsNotCovered?: string[];
   /**
-   * The library didn't cover the question, so this is the model's own
-   * knowledge. Still a real answer — it just gets labelled as unsourced, since
-   * the whole promise of the app is that you can tell the two apart.
+   * Where the answer came from. Drives the badge only — citations render on
+   * their own merit, having been verified against the retrieved chunks, so a
+   * change of label can never strip a source off the screen.
    */
-  isGeneralKnowledge?: boolean;
+  answerSource: AnswerSource;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const hasMultiple = citations.length > 1;
+  const provenanceNote = PROVENANCE_NOTE[answerSource];
 
   return (
     <AssistantRow>
       <div className="rounded-xl rounded-tl-sm border border-border bg-surface-card px-4 py-3.5">
-        {isGeneralKnowledge && (
+        {provenanceNote && (
           <p className="mb-2.5 inline-flex items-center gap-1.5 rounded-lg border border-warn-border bg-warn-bg px-2 py-1 text-[11px] font-medium text-warn-text">
             <AlertCircleIcon className="size-3.5 shrink-0" />
-            Not from your documents · general knowledge
+            {provenanceNote}
           </p>
         )}
 

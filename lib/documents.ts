@@ -26,8 +26,19 @@ export interface RetrievedChunk {
  * doesn't cover a question the model answers from what it knows and says so,
  * and the UI badges it rather than showing the "couldn't find that" card. Only
  * `none` means no answer was possible at all.
+ *
+ * `mixed` exists because "who is dostoevsky?" genuinely is both — his identity
+ * is the model's own knowledge, his authorship of White Nights is on the title
+ * page in the library. Without a box that fits, the model picked one of the
+ * other two at random from run to run, and a `general_knowledge` verdict used
+ * to discard the verified citation along with it.
  */
-export type AnswerSource = "documents" | "general_knowledge" | "none" | "clarification";
+export type AnswerSource =
+  | "documents"
+  | "mixed"
+  | "general_knowledge"
+  | "none"
+  | "clarification";
 
 /**
  * One turn of conversation, as sent to `/api/query`.

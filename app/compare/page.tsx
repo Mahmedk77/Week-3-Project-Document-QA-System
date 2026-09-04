@@ -187,7 +187,7 @@ function StrategyColumn({
             }`}
           >
             {noneRelevant
-              ? `Nothing clears cosine ${minSimilarity} — /api/query would refuse this question.`
+              ? `Nothing clears cosine ${minSimilarity} — /api/query would answer this from general knowledge, not your documents.`
               : `Cosine ≥ ${minSimilarity}`}
           </p>
         </div>

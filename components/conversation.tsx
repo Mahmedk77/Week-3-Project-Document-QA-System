@@ -2,7 +2,6 @@
 
 import { Fragment, useState } from "react";
 import type { Citation } from "@/lib/documents";
-import { NO_CONTEXT_ANSWER } from "@/lib/documents";
 import { AlertCircleIcon, ChatIcon, ChevronDownIcon, FileIcon } from "./icons";
 import { CitationCard, CitationsDialog } from "./citations";
 
@@ -113,9 +112,23 @@ function AnswerBody({ answer, citationCount, onMarkerClick }: {
 export function AnswerMessage({
   answer,
   citations,
+  isGeneralKnowledge = false,
+  documentsNotCovered = [],
 }: {
   answer: string;
   citations: Citation[];
+  /**
+   * Documents this answer doesn't speak for. Stated by the UI rather than left
+   * to the model, which reliably answered whole-library questions from one
+   * document without ever mentioning the others.
+   */
+  documentsNotCovered?: string[];
+  /**
+   * The library didn't cover the question, so this is the model's own
+   * knowledge. Still a real answer — it just gets labelled as unsourced, since
+   * the whole promise of the app is that you can tell the two apart.
+   */
+  isGeneralKnowledge?: boolean;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const hasMultiple = citations.length > 1;
@@ -123,6 +136,13 @@ export function AnswerMessage({
   return (
     <AssistantRow>
       <div className="rounded-xl rounded-tl-sm border border-border bg-surface-card px-4 py-3.5">
+        {isGeneralKnowledge && (
+          <p className="mb-2.5 inline-flex items-center gap-1.5 rounded-lg border border-warn-border bg-warn-bg px-2 py-1 text-[11px] font-medium text-warn-text">
+            <AlertCircleIcon className="size-3.5 shrink-0" />
+            Not from your documents · general knowledge
+          </p>
+        )}
+
         <AnswerBody
           answer={answer}
           citationCount={citations.length}
@@ -152,6 +172,20 @@ export function AnswerMessage({
             </span>
           </div>
         )}
+
+        {documentsNotCovered.length > 0 && (
+          <p className="mt-3 border-t border-border pt-2.5 text-xs leading-relaxed text-text-muted">
+            No matching excerpts came from{" "}
+            {documentsNotCovered.map((filename, i) => (
+              <Fragment key={filename}>
+                {i > 0 && ", "}
+                <span className="text-text-secondary">{filename}</span>
+              </Fragment>
+            ))}
+            , so this answer doesn&apos;t speak for{" "}
+            {documentsNotCovered.length > 1 ? "those documents" : "that document"}.
+          </p>
+        )}
       </div>
 
       {hasMultiple && (
@@ -165,11 +199,13 @@ export function AnswerMessage({
   );
 }
 
-/** `citations: []` — the backend found nothing above the relevance floor. */
+/**
+ * `answerSource: "none"` — the model could answer neither from the documents
+ * nor from its own knowledge. Rare by design: a question the library doesn't
+ * cover now gets a badged general-knowledge answer instead of landing here.
+ */
 export function NotFoundMessage({ answer }: { answer: string }) {
-  // The route's canned backstop string adds nothing over the headline; a model-
-  // written explanation does, so that one is shown.
-  const detail = answer.trim() === NO_CONTEXT_ANSWER ? null : answer;
+  const detail = answer.trim() || null;
 
   return (
     <AssistantRow>

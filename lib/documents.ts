@@ -19,9 +19,27 @@ export interface RetrievedChunk {
   similarity: number;
 }
 
+/**
+ * Where an answer came from.
+ *
+ * `general_knowledge` is a first-class outcome, not a failure: when the library
+ * doesn't cover a question the model answers from what it knows and says so,
+ * and the UI badges it rather than showing the "couldn't find that" card. Only
+ * `none` means no answer was possible at all.
+ */
+export type AnswerSource = "documents" | "general_knowledge" | "none";
+
 export interface QueryResponse {
   answer: string;
+  answerSource: AnswerSource;
   citations: Citation[];
+  /**
+   * Documents in the library that this answer does NOT speak for, because
+   * nothing relevant to the question was retrieved from them. Surfaced so a
+   * one-document answer to a whole-library question can't read as complete —
+   * empty whenever the library holds one document, or all of them were covered.
+   */
+  documentsNotCovered: string[];
   retrievedChunks: RetrievedChunk[];
 }
 
@@ -41,7 +59,14 @@ export interface IngestResponse {
 export type ChatMessage =
   | { id: string; kind: "user"; text: string; time: string }
   | { id: string; kind: "pending" }
-  | { id: string; kind: "answer"; answer: string; citations: Citation[] }
+  | {
+      id: string;
+      kind: "answer";
+      answer: string;
+      answerSource: AnswerSource;
+      citations: Citation[];
+      documentsNotCovered: string[];
+    }
   | { id: string; kind: "error"; message: string };
 
 /** One ingested document, aggregated from its chunk rows by `GET /api/documents`. */
@@ -56,15 +81,6 @@ export interface DocumentsResponse {
   documents: DocumentSummary[];
   totals: { documents: number; pages: number; chunks: number };
 }
-
-/**
- * The literal backstop string `/api/query` returns when every retrieved chunk
- * falls under MIN_SIMILARITY. Matched (not imported) because the query route is
- * out of scope for this pass — if that copy ever changes, the UI degrades to
- * showing it as body text, which is still correct, just less tidy.
- */
-export const NO_CONTEXT_ANSWER =
-  "No relevant context was found in the knowledge base for this question.";
 
 export function formatUploadedDate(iso: string | null, style: "long" | "short" = "long") {
   if (!iso) return "—";

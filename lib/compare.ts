@@ -72,7 +72,12 @@ export interface CompareResponse {
   mmr: { fetchK: number; lambda: number };
   /** Time spent embedding the question once, shared by all three strategies. */
   embedMs: number;
-  /** The relevance floor applied for display — same value `/api/query` gates on. */
+  /**
+   * The absolute relevance floor, as displayed. `/api/query` imports this same
+   * constant, but gates on `max(MIN_SIMILARITY, topSimilarity - RELATIVE_WINDOW)`
+   * — so a chunk shown as above the floor here may still be trimmed there for
+   * sitting too far behind the best hit in its own result set.
+   */
   minSimilarity: number;
   strategies: StrategyResult[];
 }

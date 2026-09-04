@@ -1,18 +1,8 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/models";
+import { fetchChunkMetadataRows } from "@/lib/corpus";
 import type { DocumentSummary } from "@/lib/documents";
 
 export const runtime = "nodejs";
-
-// Supabase caps a single select at 1000 rows, so the chunk rows are walked in
-// pages. Only `metadata` is selected — never `content` or the 1536-dim
-// `embedding` — so each page stays small.
-const PAGE_SIZE = 1000;
-
-interface ChunkRow {
-  id: number;
-  metadata: { filename?: string; pageNumber?: number; uploadedAt?: string } | null;
-}
 
 /**
  * GET /api/documents — the list backing the Documents page.
@@ -27,21 +17,7 @@ interface ChunkRow {
  */
 export async function GET() {
   try {
-    const rows: ChunkRow[] = [];
-
-    for (let from = 0; ; from += PAGE_SIZE) {
-      const { data, error } = await supabaseAdmin
-        .from("documents")
-        .select("id, metadata")
-        .order("id", { ascending: true })
-        .range(from, from + PAGE_SIZE - 1);
-
-      if (error) throw error;
-
-      const page = (data ?? []) as ChunkRow[];
-      rows.push(...page);
-      if (page.length < PAGE_SIZE) break;
-    }
+    const rows = await fetchChunkMetadataRows();
 
     const byFilename = new Map<
       string,

@@ -249,13 +249,18 @@ export default function AskPage() {
                   case "error":
                     return <ErrorMessage key={message.id} message={message.message} />;
                   case "answer":
-                    return message.citations.length === 0 ? (
+                    // Branches on where the answer came from, not on whether it
+                    // has citations — an uncited answer is usually a real
+                    // general-knowledge one, not a failure.
+                    return message.answerSource === "none" ? (
                       <NotFoundMessage key={message.id} answer={message.answer} />
                     ) : (
                       <AnswerMessage
                         key={message.id}
                         answer={message.answer}
                         citations={message.citations}
+                        isGeneralKnowledge={message.answerSource === "general_knowledge"}
+                        documentsNotCovered={message.documentsNotCovered}
                       />
                     );
                 }

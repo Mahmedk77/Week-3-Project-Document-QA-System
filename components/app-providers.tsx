@@ -280,7 +280,16 @@ export function AppProviders({ children }: { children: ReactNode }) {
       const body = (await response.json()) as QueryResponse & { error?: string };
 
       resolved = response.ok
-        ? { id: pendingId, kind: "answer", answer: body.answer, citations: body.citations ?? [] }
+        ? {
+            id: pendingId,
+            kind: "answer",
+            answer: body.answer,
+            // Defaulted rather than assumed, so a response from an older
+            // deployment still renders as an answer instead of a blank card.
+            answerSource: body.answerSource ?? (body.citations?.length ? "documents" : "none"),
+            citations: body.citations ?? [],
+            documentsNotCovered: body.documentsNotCovered ?? [],
+          }
         : {
             id: pendingId,
             kind: "error",

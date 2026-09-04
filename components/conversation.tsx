@@ -2,6 +2,8 @@
 
 import { Fragment, useState } from "react";
 import type { Citation } from "@/lib/documents";
+import type { InlineSpan } from "@/lib/rich-text";
+import { parseAnswer } from "@/lib/rich-text";
 import { AlertCircleIcon, ChatIcon, ChevronDownIcon, FileIcon } from "./icons";
 import { CitationCard, CitationsDialog } from "./citations";
 
@@ -65,43 +67,116 @@ function CitationMarker({ n, onClick }: { n: number; onClick?: () => void }) {
   );
 }
 
+/** One line's worth of spans: bold, italic, plain text and citation badges. */
+function InlineSpans({ spans, citationCount, onMarkerClick }: {
+  spans: InlineSpan[];
+  citationCount: number;
+  onMarkerClick?: () => void;
+}) {
+  return (
+    <>
+      {spans.map((span, i) => {
+        switch (span.kind) {
+          case "strong":
+            return (
+              <strong key={i} className="font-semibold text-text-primary">
+                {span.text}
+              </strong>
+            );
+          case "em":
+            return (
+              <em key={i} className="italic">
+                {span.text}
+              </em>
+            );
+          case "citation":
+            // Markers pointing past the end of `citations` stay as plain text
+            // rather than linking to a source that isn't there.
+            return span.index >= 1 && span.index <= citationCount ? (
+              <CitationMarker key={i} n={span.index} onClick={onMarkerClick} />
+            ) : (
+              <Fragment key={i}>{`[${span.index}]`}</Fragment>
+            );
+          default:
+            return <Fragment key={i}>{span.text}</Fragment>;
+        }
+      })}
+    </>
+  );
+}
+
 /**
- * Renders the answer with numbered markers.
+ * Renders the answer's Markdown and its numbered citation markers.
+ *
+ * The model writes `**bold**` and numbered lists, which used to reach the
+ * screen as literal asterisks. Structure is worth keeping — a taste pathway
+ * reads as a list because it is one — so it's parsed rather than stripped.
  *
  * The model isn't required to emit `[n]` markers, so both cases are handled:
  * when it does, they become inline badges in place; when it doesn't, the badges
- * trail the answer. Markers pointing past the end of `citations` are left as
- * plain text rather than linking to a source that isn't there.
+ * trail the answer.
  */
 function AnswerBody({ answer, citationCount, onMarkerClick }: {
   answer: string;
   citationCount: number;
   onMarkerClick?: () => void;
 }) {
-  const segments = answer.split(/\[(\d+)\]/g);
-  const hasInlineMarkers = segments.some(
-    (segment, i) => i % 2 === 1 && Number(segment) >= 1 && Number(segment) <= citationCount
+  const blocks = parseAnswer(answer);
+  const hasInlineMarkers = blocks.some((block) => {
+    const spans = block.kind === "paragraph" ? block.spans : block.items.flat();
+    return spans.some(
+      (span) => span.kind === "citation" && span.index >= 1 && span.index <= citationCount
+    );
+  });
+
+  const trailing = !hasInlineMarkers && citationCount > 0 && (
+    <>
+      {Array.from({ length: citationCount }, (_, i) => (
+        <CitationMarker key={`trailing-${i}`} n={i + 1} onClick={onMarkerClick} />
+      ))}
+    </>
   );
 
   return (
-    <p className="text-sm leading-relaxed whitespace-pre-wrap text-text-primary">
-      {segments.map((segment, i) => {
-        if (i % 2 === 0) return <Fragment key={i}>{segment}</Fragment>;
+    <div className="flex flex-col gap-2 text-sm leading-relaxed text-text-primary">
+      {blocks.map((block, blockIndex) => {
+        const isLast = blockIndex === blocks.length - 1;
 
-        const n = Number(segment);
-        return n >= 1 && n <= citationCount ? (
-          <CitationMarker key={i} n={n} onClick={onMarkerClick} />
-        ) : (
-          <Fragment key={i}>{`[${segment}]`}</Fragment>
+        if (block.kind === "list") {
+          const ListTag = block.ordered ? "ol" : "ul";
+          return (
+            <ListTag
+              key={blockIndex}
+              className={`flex flex-col gap-1 pl-5 ${
+                block.ordered ? "list-decimal" : "list-disc"
+              } marker:text-text-muted`}
+            >
+              {block.items.map((item, itemIndex) => (
+                <li key={itemIndex} className="pl-0.5">
+                  <InlineSpans
+                    spans={item}
+                    citationCount={citationCount}
+                    onMarkerClick={onMarkerClick}
+                  />
+                  {isLast && itemIndex === block.items.length - 1 ? trailing : null}
+                </li>
+              ))}
+            </ListTag>
+          );
+        }
+
+        return (
+          <p key={blockIndex} className="whitespace-pre-wrap">
+            <InlineSpans
+              spans={block.spans}
+              citationCount={citationCount}
+              onMarkerClick={onMarkerClick}
+            />
+            {isLast ? trailing : null}
+          </p>
         );
       })}
-
-      {!hasInlineMarkers &&
-        citationCount > 0 &&
-        Array.from({ length: citationCount }, (_, i) => (
-          <CitationMarker key={`trailing-${i}`} n={i + 1} onClick={onMarkerClick} />
-        ))}
-    </p>
+    </div>
   );
 }
 
